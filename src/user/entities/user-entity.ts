@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from "typeorm";
-import { UserTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
+import { UserTenantMapping } from "../../userTenantMapping/entities/user-tenant-mapping.entity";
 
 export enum UserStatus {
   ACTIVE = "active",
@@ -22,16 +22,20 @@ export class User {
   @Column({ unique: true })
   username: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: false })
+  @Column({ type: "varchar", length: 50, nullable: false })
   firstName: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
+  @Column({ type: "varchar", length: 50, nullable: true })
   middleName: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: false })
+  @Column({ type: "varchar", length: 50, nullable: false })
   lastName: string;
 
-  @Column({ type: 'enum', enum: ['male', 'female', 'transgender'], nullable: false })
+  @Column({
+    type: "enum",
+    enum: ["male", "female", "transgender"],
+    nullable: false,
+  })
   gender: string;
 
   @Column({ type: "date", nullable: true })
@@ -67,7 +71,7 @@ export class User {
   @Column({ nullable: true })
   mobile: number;
 
-  @Column('text', { array: true, nullable: true })
+  @Column("text", { array: true, nullable: true })
   deviceId: string[];
 
   @Column({ nullable: false, default: true })

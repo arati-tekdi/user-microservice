@@ -62,4 +62,7 @@ export class Tenant {
 
   @Column({ type: "uuid", nullable: true })
   updatedBy: string | null; // UUID of the user who last updated the tenant
+  //for testing typeorm
+  @Column({ type: "integer", nullable: true })
+  testTypeorm: number;
 }
