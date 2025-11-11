@@ -327,7 +327,7 @@ export class PostgresPrivilegeService {
   public async checkValidTenantIdRoleIdCombination(tenantId, roleId) {
     try {
       const ValidTenantIdRoleCombination = await this.roleRepository.findOne({
-        where: { orgId: tenantId, roleId: roleId },
+        where: { tenantId: tenantId, roleId: roleId },
       });
       return ValidTenantIdRoleCombination;
     } catch (error) {

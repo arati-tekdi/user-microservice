@@ -63,19 +63,16 @@ export class FieldValuesOptionDto {
 }
 
 export class AutomaticMemberDto {
-  @ApiProperty({
-    type: Boolean,
-    description: "Indicates whether the member is automatic or not",
-  })
+  @ApiProperty({ type: Boolean, description: 'Indicates whether the member is automatic or not' })
   @Expose()
   value: boolean;
 
-  @ApiProperty({ type: String })
+  @ApiProperty({ type: String})
   @Expose()
   @IsUUID(undefined, { message: "Field Id must be a valid UUID" })
   fieldId: string;
 
-  @ApiProperty({ type: String })
+  @ApiProperty({ type: String})
   @Expose()
   @IsString()
   fieldName: string;
@@ -90,33 +87,20 @@ export class UserCreateDto {
   @IsNotEmpty()
   username: string;
 
-  @ApiProperty({
-    type: String,
-    description: "First name of the user",
-    maxLength: 50,
-  })
+  @ApiProperty({ type: String, description: 'First name of the user', maxLength: 50 })
   @Expose()
   @IsString()
   @Length(1, 50)
   firstName: string;
 
-  @ApiPropertyOptional({
-    type: String,
-    description: "Middle name of the user (optional)",
-    maxLength: 50,
-    required: false,
-  })
+  @ApiPropertyOptional({ type: String, description: 'Middle name of the user (optional)', maxLength: 50, required: false })
   @Expose()
   @IsOptional()
   @IsString()
   @Length(0, 50)
   middleName?: string;
 
-  @ApiProperty({
-    type: String,
-    description: "Last name of the user",
-    maxLength: 50,
-  })
+  @ApiProperty({ type: String, description: 'Last name of the user', maxLength: 50 })
   @Expose()
   @IsString()
   @Length(1, 50)
@@ -124,12 +108,13 @@ export class UserCreateDto {
 
   @ApiProperty({
     type: String,
-    description: "Gender of the user",
-    enum: ["male", "female", "transgender"],
+    description: 'Gender of the user',
+    enum: ['male', 'female', 'transgender']
   })
   @Expose()
-  @IsEnum(["male", "female", "transgender"])
+  @IsEnum(['male', 'female', 'transgender'])
   gender: string;
+
 
   @ApiPropertyOptional({
     type: String,
@@ -138,7 +123,7 @@ export class UserCreateDto {
   @Expose()
   @IsOptional()
   @IsDateString() // Ensures it's a valid date format
-  @NotInFuture({ message: "The birth date cannot be in the future" })
+  @NotInFuture({ message: 'The birth date cannot be in the future' })
   dob: string;
 
   @ApiPropertyOptional({
@@ -203,12 +188,9 @@ export class UserCreateDto {
   @Expose()
   updatedBy: string;
 
-  @ApiPropertyOptional({
-    type: () => AutomaticMemberDto,
-    description: "Details of automatic membership",
-  })
+  @ApiPropertyOptional({ type: () => AutomaticMemberDto, description: 'Details of automatic membership' })
   @Expose()
-  automaticMember?: AutomaticMemberDto;
+  automaticMember ?: AutomaticMemberDto;
 
   @ApiProperty({
     type: [tenantRoleMappingDto],
@@ -226,9 +208,6 @@ export class UserCreateDto {
   @ValidateNested({ each: true })
   @Type(() => FieldValuesOptionDto)
   customFields: FieldValuesOptionDto[];
-
-  tenant: any;
-  orgnizations: any;
 
   constructor(partial: Partial<UserCreateDto>) {
     Object.assign(this, partial);

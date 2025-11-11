@@ -10,7 +10,7 @@ import { FieldValues } from "../fields/entities/fields-values.entity";
 import { CohortMembers } from "src/cohortMembers/entities/cohort-member.entity";
 import { PostgresModule } from "src/adapters/postgres/postgres-module";
 import { PostgresCohortService } from "src/adapters/postgres/cohort-adapter";
-import { UserOrgTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
+import { UserTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
 import { PostgresFieldsService } from "src/adapters/postgres/fields-adapter";
 import { CohortAcademicYearService } from "src/adapters/postgres/cohortAcademicYear-adapter";
 import { Role } from "src/rbac/role/entities/role.entity";
@@ -22,6 +22,7 @@ import { User } from "src/user/entities/user-entity";
 import { Tenants } from "src/userTenantMapping/entities/tenant.entity";
 import { AutomaticMember } from "src/automatic-member/entity/automatic-member.entity";
 import { AutomaticMemberService } from "src/automatic-member/automatic-member.service";
+import { KafkaService } from "../kafka/kafka.service";
 
 
 @Module({
@@ -31,7 +32,7 @@ import { AutomaticMemberService } from "src/automatic-member/automatic-member.se
       FieldValues,
       Fields,
       CohortMembers,
-      UserOrgTenantMapping,
+      UserTenantMapping,
       Role,
       CohortAcademicYear,
       AcademicYear,
@@ -51,7 +52,8 @@ import { AutomaticMemberService } from "src/automatic-member/automatic-member.se
     CohortAcademicYearService,
     PostgresAcademicYearService,
     PostgresCohortMembersService,
-    AutomaticMemberService
+    AutomaticMemberService,
+    KafkaService
   ],
 })
 export class CohortModule { }

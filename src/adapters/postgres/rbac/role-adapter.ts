@@ -15,7 +15,8 @@ import { isUUID } from "class-validator";
 import APIResponse from "src/common/responses/response";
 import { Response } from "express";
 import { APIID } from "src/common/utils/api-id.config";
-import { validate as uuidValidate } from "uuid";
+import { validate as uuidValidate } from 'uuid';
+
 
 @Injectable()
 export class PostgresRoleService {
@@ -26,7 +27,7 @@ export class PostgresRoleService {
     private readonly userRoleMappingRepository: Repository<UserRoleMapping>,
     @InjectRepository(RolePrivilegeMapping)
     private readonly roleprivilegeMappingRepository: Repository<RolePrivilegeMapping>
-  ) {}
+  ) { }
   public async createRole(
     request: any,
     createRolesDto: CreateRolesDto,
@@ -37,10 +38,7 @@ export class PostgresRoleService {
     const errors = [];
 
     try {
-      if (
-        createRolesDto?.tenantId?.trim() !== "" &&
-        !uuidValidate(createRolesDto?.tenantId)
-      ) {
+      if (createRolesDto?.tenantId?.trim() !== '' && !uuidValidate(createRolesDto?.tenantId)) {
         return APIResponse.error(
           response,
           apiId,
@@ -68,7 +66,7 @@ export class PostgresRoleService {
 
         // Check if role name already exists
         const existingRole = await this.roleRepository.findOne({
-          where: { code: code, orgId: tenantId ? tenantId : IsNull() },
+          where: { code: code, tenantId: tenantId ? tenantId : IsNull() },
         });
         if (existingRole) {
           errors.push({
@@ -368,7 +366,7 @@ export class PostgresRoleService {
   public async findRoleData(id: string) {
     const data = await this.roleRepository.find({
       where: {
-        orgId: id,
+        tenantId: id,
       },
       select: ["roleId", "title", "code"],
     });

@@ -14,7 +14,7 @@ import {
   MemberStatus,
 } from "src/cohortMembers/entities/cohort-member.entity";
 import { isUUID } from "class-validator";
-import { UserOrgTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
+import { UserTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
 import APIResponse from "src/common/responses/response";
 import { APIID } from "src/common/utils/api-id.config";
 import { CohortAcademicYearService } from "./cohortAcademicYear-adapter";
@@ -24,6 +24,7 @@ import { CohortAcademicYear } from "src/cohortAcademicYear/entities/cohortAcadem
 import { PostgresCohortMembersService } from "./cohortMembers-adapter";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import { AutomaticMemberService } from "src/automatic-member/automatic-member.service";
+import { KafkaService } from "../../kafka/kafka.service";
 
 @Injectable()
 export class PostgresCohortService {
@@ -36,14 +37,15 @@ export class PostgresCohortService {
     private fieldValuesRepository: Repository<FieldValues>,
     @InjectRepository(Fields)
     private fieldsRepository: Repository<Fields>,
-    @InjectRepository(UserOrgTenantMapping)
-    private UserOrgTenantMappingRepository: Repository<UserOrgTenantMapping>,
+    @InjectRepository(UserTenantMapping)
+    private UserTenantMappingRepository: Repository<UserTenantMapping>,
     private fieldsService: PostgresFieldsService,
     private readonly cohortAcademicYearService: CohortAcademicYearService,
     private readonly postgresAcademicYearService: PostgresAcademicYearService,
     private readonly postgresCohortMembersService: PostgresCohortMembersService,
-    private readonly automaticMemberService: AutomaticMemberService
-  ) { }
+    private readonly automaticMemberService: AutomaticMemberService,
+    private readonly kafkaService: KafkaService
+  ) {}
 
   public async getCohortsDetails(requiredData, res) {
     const apiId = APIID.COHORT_READ;
@@ -91,7 +93,7 @@ export class PostgresCohortService {
         `${API_RESPONSES.SERVER_ERROR}`,
         `Error: ${error.message}`,
         apiId
-      )
+      );
       const errorMessage = error.message || API_RESPONSES.SERVER_ERROR;
       return APIResponse.error(
         res,
@@ -112,19 +114,20 @@ export class PostgresCohortService {
         name: data.name,
         parentId: data.parentId,
         type: data.type,
-        customField: await this.fieldsService.getCustomFieldDetails(data.cohortId, 'Cohort'),
+        customField: await this.fieldsService.getCustomFieldDetails(
+          data.cohortId,
+          "Cohort"
+        ),
       };
       result.cohortData.push(cohortData);
     }
-    LoggerUtil.log(
-      API_RESPONSES.COHORT_DATA_RESPONSE,
-    )
+    LoggerUtil.log(API_RESPONSES.COHORT_DATA_RESPONSE);
     return APIResponse.success(
       res,
       apiId,
       result,
       HttpStatus.OK,
-      API_RESPONSES.COHORT_LIST,
+      API_RESPONSES.COHORT_LIST
     );
   }
 
@@ -139,7 +142,10 @@ export class PostgresCohortService {
         type: cohort.type,
         status: cohort?.status,
         customField: requiredData.customField
-          ? await this.fieldsService.getCustomFieldDetails(cohort.cohortId, 'Cohort')
+          ? await this.fieldsService.getCustomFieldDetails(
+              cohort.cohortId,
+              "Cohort"
+            )
           : undefined,
         childData: await this.getCohortHierarchy(
           cohort.cohortId,
@@ -148,9 +154,7 @@ export class PostgresCohortService {
       };
       resultDataList.push(resultData);
 
-      LoggerUtil.log(
-        API_RESPONSES.CHILD_DATA,
-      )
+      LoggerUtil.log(API_RESPONSES.CHILD_DATA);
     }
 
     return APIResponse.success(
@@ -158,7 +162,7 @@ export class PostgresCohortService {
       apiId,
       resultDataList,
       HttpStatus.OK,
-      API_RESPONSES.COHORT_HIERARCHY,
+      API_RESPONSES.COHORT_HIERARCHY
     );
   }
 
@@ -166,12 +170,14 @@ export class PostgresCohortService {
     cohortId: string,
     contextType?: string
   ) {
-    const fieldValues = await this.fieldsService.getCustomFieldDetails(cohortId, 'Cohort');
+    const fieldValues = await this.fieldsService.getCustomFieldDetails(
+      cohortId,
+      "Cohort"
+    );
     return fieldValues;
   }
 
   public async findCohortName(userId: any, academicYearId?: string) {
-
     const baseQuery = `
                     SELECT 
                       c."name", 
@@ -234,11 +240,11 @@ export class PostgresCohortService {
   //   fieldOption?: boolean
   // ) {
   //   const query = `
-  //   SELECT DISTINCT 
+  //   SELECT DISTINCT
   //     f."fieldId",
-  //     f."label", 
-  //     fv."value", 
-  //     f."type", 
+  //     f."label",
+  //     fv."value",
+  //     f."type",
   //     f."fieldParams",
   //     f."sourceDetails"
   //   FROM public."Cohort" c
@@ -313,7 +319,7 @@ export class PostgresCohortService {
 
       const academicYearId = cohortCreateDto.academicYearId;
       const tenantId = cohortCreateDto.tenantId;
-      cohortCreateDto.name = cohortCreateDto?.name.toLowerCase()
+      cohortCreateDto.name = cohortCreateDto?.name.toLowerCase();
       // verify if the academic year id is valid
       const academicYear =
         await this.postgresAcademicYearService.getActiveAcademicYear(
@@ -373,8 +379,9 @@ export class PostgresCohortService {
           HttpStatus.CONFLICT
         );
       }
+      console.log("cohortCreateDto: ", cohortCreateDto);
       const response = await this.cohortRepository.save(cohortCreateDto);
-      
+
       const createFailures = [];
 
       //SAVE  in fieldValues table
@@ -421,23 +428,38 @@ export class PostgresCohortService {
         ...response,
         academicYearId: academicYearId,
       });
-      LoggerUtil.log(
-        API_RESPONSES.CREATE_COHORT,
-      )
+      LoggerUtil.log(API_RESPONSES.CREATE_COHORT);
 
-      return APIResponse.success(
+      // Send response to the client
+      const apiResponse = APIResponse.success(
         res,
         apiId,
         resBody,
         HttpStatus.CREATED,
         API_RESPONSES.CREATE_COHORT
       );
+
+      // Publish cohort created event to Kafka asynchronously - after response is sent to client
+      this.publishCohortEvent(
+        "created",
+        response.cohortId,
+        academicYearId,
+        apiId
+      ).catch((error) =>
+        LoggerUtil.error(
+          `Failed to publish cohort created event to Kafka`,
+          `Error: ${error.message}`,
+          apiId
+        )
+      );
+
+      return apiResponse;
     } catch (error) {
       LoggerUtil.error(
         `${API_RESPONSES.SERVER_ERROR}`,
         `Error: ${error.message}`,
         apiId
-      )
+      );
       const errorMessage = error.message || API_RESPONSES.SERVER_ERROR;
       return APIResponse.error(
         res,
@@ -509,7 +531,8 @@ export class PostgresCohortService {
           const filterOptions = {
             where: {
               name: cohortUpdateDto.name || existingCohorDetails.name,
-              parentId: cohortUpdateDto.parentId || existingCohorDetails.parentId,
+              parentId:
+                cohortUpdateDto.parentId || existingCohorDetails.parentId,
               cohortId: Not(cohortId),
             },
           };
@@ -550,26 +573,26 @@ export class PostgresCohortService {
         if (
           cohortUpdateDto.customFields &&
           cohortUpdateDto.customFields.length > 0
-        ) {          
+        ) {
           const contextType = cohortUpdateDto.type
             ? [cohortUpdateDto.type]
             : existingCohorDetails?.type
-              ? [existingCohorDetails.type]
-              : [];
+            ? [existingCohorDetails.type]
+            : [];
           const allCustomFields = await this.fieldsService.findCustomFields(
             "COHORT",
             contextType
           );
-          
+
           if (allCustomFields.length > 0) {
             const customFieldAttributes = allCustomFields.reduce(
               (fieldDetail, { fieldId, fieldAttributes, fieldParams, name }) =>
                 fieldDetail[`${fieldId}`]
                   ? fieldDetail
                   : {
-                    ...fieldDetail,
-                    [`${fieldId}`]: { fieldAttributes, fieldParams, name },
-                  },
+                      ...fieldDetail,
+                      [`${fieldId}`]: { fieldAttributes, fieldParams, name },
+                    },
               {}
             );
             for (const fieldValues of cohortUpdateDto.customFields) {
@@ -609,16 +632,28 @@ export class PostgresCohortService {
           }
         }
 
-        LoggerUtil.log(
-          API_RESPONSES.COHORT_UPDATED_SUCCESSFULLY,
-        )
-        return APIResponse.success(
+        LoggerUtil.log(API_RESPONSES.COHORT_UPDATED_SUCCESSFULLY);
+
+        // Send response to the client
+        const apiResponse = APIResponse.success(
           res,
           apiId,
           response?.affected,
           HttpStatus.OK,
           API_RESPONSES.COHORT_UPDATED_SUCCESSFULLY
         );
+
+        // Publish cohort updated event to Kafka asynchronously - after response is sent to client
+        this.publishCohortEvent("updated", cohortId, null, apiId).catch(
+          (error) =>
+            LoggerUtil.error(
+              `Failed to publish cohort updated event to Kafka`,
+              `Error: ${error.message}`,
+              apiId
+            )
+        );
+
+        return apiResponse;
       } else {
         return APIResponse.error(
           res,
@@ -633,7 +668,7 @@ export class PostgresCohortService {
         `${API_RESPONSES.SERVER_ERROR}`,
         `Error: ${error.message}`,
         apiId
-      )
+      );
       const errorMessage = error.message || API_RESPONSES.SERVER_ERROR;
       return APIResponse.error(
         res,
@@ -785,7 +820,7 @@ export class PostgresCohortService {
           );
         }
 
-        const userTenantMapExist = await this.UserOrgTenantMappingRepository.find({
+        const userTenantMapExist = await this.UserTenantMappingRepository.find({
           where: {
             tenantId: tenantId,
             userId: whereClause["userId"],
@@ -827,13 +862,13 @@ export class PostgresCohortService {
         }
       } else {
         let getCohortIdUsingCustomFields;
-        
+
         //If source config in source details from fields table is not exist then return false
 
         if (Object.keys(searchCustomFields).length > 0) {
           const context = "COHORT";
           getCohortIdUsingCustomFields =
-            await this.fieldsService.filterUserUsingCustomFields(
+            await this.fieldsService.filterUserUsingCustomFieldsOptimized(
               context,
               searchCustomFields
             );
@@ -851,7 +886,8 @@ export class PostgresCohortService {
 
         if (
           getCohortIdUsingCustomFields &&
-          getCohortIdUsingCustomFields.length > 0 && !whereClause['cohortId']
+          getCohortIdUsingCustomFields.length > 0 &&
+          !whereClause["cohortId"]
         ) {
           let cohortIdsByFieldAndAcademicYear;
           if (cohortsByAcademicYear?.length >= 1) {
@@ -876,7 +912,6 @@ export class PostgresCohortService {
           order,
         });
 
-        
         const cohortData = data.slice(offset, offset + limit);
         count = totalCount;
 
@@ -912,7 +947,7 @@ export class PostgresCohortService {
         `${API_RESPONSES.SERVER_ERROR}`,
         `Error: ${error.message}`,
         apiId
-      )
+      );
       const errorMessage = error.message || API_RESPONSES.SERVER_ERROR;
       return APIResponse.error(
         response,
@@ -949,13 +984,26 @@ export class PostgresCohortService {
         await this.cohortMembersRepository.delete({ cohortId: cohortId });
         await this.fieldValuesRepository.delete({ itemId: cohortId });
 
-        return APIResponse.success(
+        // Send response to the client
+        const apiResponse = APIResponse.success(
           response,
           apiId,
           affectedrows[1],
           HttpStatus.OK,
           "Cohort Deleted Successfully."
         );
+
+        // Publish cohort deleted event to Kafka asynchronously - after response is sent to client
+        this.publishCohortEvent("deleted", cohortId, null, apiId).catch(
+          (error) =>
+            LoggerUtil.error(
+              `Failed to publish cohort deleted event to Kafka`,
+              `Error: ${error.message}`,
+              apiId
+            )
+        );
+
+        return apiResponse;
       } else {
         return APIResponse.error(
           response,
@@ -970,7 +1018,7 @@ export class PostgresCohortService {
         `${API_RESPONSES.SERVER_ERROR}`,
         `Error: ${error.message}`,
         apiId
-      )
+      );
       const errorMessage = error.message || API_RESPONSES.SERVER_ERROR;
       return APIResponse.error(
         response,
@@ -1010,7 +1058,8 @@ export class PostgresCohortService {
           customField
         );
         customFieldDetails = await this.fieldsService.getCustomFieldDetails(
-          data.cohortId, 'Cohort'
+          data.cohortId,
+          "Cohort"
         );
       } else {
         childHierarchy = await this.getCohortHierarchy(data.cohortId);
@@ -1026,24 +1075,31 @@ export class PostgresCohortService {
       });
     }
 
-    LoggerUtil.log(
-      API_RESPONSES.COHORT_HIERARCHY,
-    )
+    LoggerUtil.log(API_RESPONSES.COHORT_HIERARCHY);
 
     return hierarchy;
   }
 
-  public async getCohortDetailsByIds(ids: string[]) {
-    return await this.cohortRepository.find({
-      where: {
-        cohortId: In(ids),
-      },
-      select: ["cohortId", "name", "parentId", "type", "status"],
-    });
+  public async getCohortDetailsByIds(ids: string[], academicYearId) {
+    return await this.cohortRepository
+      .createQueryBuilder("cohort")
+      .innerJoin("CohortAcademicYear", "cay", "cohort.cohortId = cay.cohortId")
+      .where("cohort.cohortId IN (:...ids)", { ids })
+      .andWhere("cay.academicYearId = :academicYearId", { academicYearId })
+      .select([
+        "cohort.cohortId",
+        "cohort.name",
+        "cohort.parentId",
+        "cohort.type",
+        "cohort.status",
+      ])
+      .getMany();
   }
 
   public async automaticMemberCohortHierarchy(requiredData, academicYearId) {
-    const { condition: { value, fieldId } } = requiredData?.rules;
+    const {
+      condition: { value, fieldId },
+    } = requiredData?.rules;
 
     // Pass fieldId to getSearchFieldValueData
     let filledValues = await this.fieldsService.getSearchFieldValueData(
@@ -1051,16 +1107,19 @@ export class PostgresCohortService {
       "0",
       {
         fieldId: fieldId,
-        value: value
-      }  // Passing extracted fieldId
+        value: value,
+      } // Passing extracted fieldId
     );
-    const cohortIds = filledValues.mappedResponse.map(item => item.itemId);
+    const cohortIds = filledValues.mappedResponse.map((item) => item.itemId);
 
     if (cohortIds.length === 0) {
       throw new Error("No cohort IDs found for the given fieldId and value.");
     }
 
-    const existingCohortIds = await this.getCohortDetailsByIds(cohortIds);
+    const existingCohortIds = await this.getCohortDetailsByIds(
+      cohortIds,
+      academicYearId
+    );
     return existingCohortIds;
   }
 
@@ -1068,13 +1127,20 @@ export class PostgresCohortService {
     const apiId = APIID.COHORT_LIST;
 
     try {
-      const checkAutomaticMember = await this.automaticMemberService.checkMemberById(requiredData.userId);
+      const checkAutomaticMember =
+        await this.automaticMemberService.checkMemberById(requiredData.userId);
 
       let findCohortId;
       if (checkAutomaticMember) {
-        findCohortId = await this.automaticMemberCohortHierarchy(checkAutomaticMember, requiredData?.academicYearId);
+        findCohortId = await this.automaticMemberCohortHierarchy(
+          checkAutomaticMember,
+          requiredData?.academicYearId
+        );
       } else {
-        findCohortId = await this.findCohortName(requiredData.userId, requiredData?.academicYearId);
+        findCohortId = await this.findCohortName(
+          requiredData.userId,
+          requiredData?.academicYearId
+        );
         if (!findCohortId.length) {
           return APIResponse.error(
             res,
@@ -1097,10 +1163,16 @@ export class PostgresCohortService {
           cohortMembershipId: cohort?.cohortMembershipId,
           cohortStatus: cohort?.cohortstatus || cohort?.status,
           type: cohort?.type,
-          customField: await this.fieldsService.getCustomFieldDetails(cohort.cohortId, 'Cohort'),
+          customField: await this.fieldsService.getCustomFieldDetails(
+            cohort.cohortId,
+            "Cohort"
+          ),
           childData: requiredData.getChildData
-            ? await this.getCohortHierarchy(cohort.cohortId, requiredData.customField)
-            : []
+            ? await this.getCohortHierarchy(
+                cohort.cohortId,
+                requiredData.customField
+              )
+            : [],
         };
 
         resultDataList.push(resultData);
@@ -1113,7 +1185,6 @@ export class PostgresCohortService {
         HttpStatus.OK,
         API_RESPONSES.COHORT_HIERARCHY
       );
-
     } catch (error) {
       LoggerUtil.error(
         `${API_RESPONSES.SERVER_ERROR}`,
@@ -1128,6 +1199,108 @@ export class PostgresCohortService {
         errorMessage,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  /**
+   * Publish cohort events to Kafka
+   * @param eventType Type of event (created, updated, deleted)
+   * @param cohortId Cohort ID for whom the event is published
+   * @param apiId API ID for logging
+   */
+  private async publishCohortEvent(
+    eventType: "created" | "updated" | "deleted",
+    cohortId: string,
+    academicYearId: string | null,
+    apiId: string
+  ): Promise<void> {
+    try {
+      // For delete events, we may want to include just basic information since the cohort might already be removed
+      let cohortData: any;
+
+      if (eventType === "deleted") {
+        cohortData = {
+          cohortId: cohortId,
+          deletedAt: new Date().toISOString(),
+        };
+      } else {
+        // For create and update, fetch complete data from DB
+        try {
+          // Get basic cohort information
+          const cohort = await this.cohortRepository.findOne({
+            where: { cohortId: cohortId },
+            select: [
+              "cohortId",
+              "name",
+              "type",
+              "status",
+              "parentId",
+              "tenantId",
+              "createdAt",
+              "updatedAt",
+              "createdBy",
+              "updatedBy",
+            ],
+          });
+
+          if (!cohort) {
+            LoggerUtil.error(
+              `Failed to fetch cohort data for Kafka event`,
+              `Cohort with ID ${cohortId} not found`
+            );
+            cohortData = { cohortId };
+          } else {
+            // Get custom fields for the cohort
+            let customFields = [];
+            try {
+              customFields = await this.fieldsService.getCustomFieldDetails(
+                cohortId,
+                "Cohort"
+              );
+            } catch (customFieldError) {
+              LoggerUtil.error(
+                `Failed to fetch custom fields for Kafka event`,
+                `Error: ${customFieldError.message}`,
+                apiId
+              );
+              // Don't fail the entire operation if custom fields fetching fails
+              customFields = [];
+            }
+
+            // Build the cohort data object
+            cohortData = {
+              ...cohort,
+              ...(academicYearId && { academicYearId }),
+              customFields: customFields || [],
+              eventTimestamp: new Date().toISOString(),
+            };
+          }
+        } catch (error) {
+          LoggerUtil.error(
+            `Failed to fetch cohort data for Kafka event`,
+            `Error: ${error.message}`
+          );
+          // Return at least the cohortId if we can't fetch complete data
+          cohortData = { cohortId };
+        }
+      }
+
+      await this.kafkaService.publishCohortEvent(
+        eventType,
+        cohortData,
+        cohortId
+      );
+      LoggerUtil.log(
+        `Cohort ${eventType} event published to Kafka for cohort ${cohortId}`,
+        apiId
+      );
+    } catch (error) {
+      LoggerUtil.error(
+        `Failed to publish cohort ${eventType} event to Kafka`,
+        `Error: ${error.message}`,
+        apiId
+      );
+      // Don't throw the error to avoid affecting the main operation
     }
   }
 }

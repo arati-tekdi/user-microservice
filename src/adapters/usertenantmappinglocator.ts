@@ -1,9 +1,9 @@
 import { Response } from "express";
-import { UserOrgTenantMappingDto } from "src/userTenantMapping/dto/user-tenant-mapping.dto";
+import { UserTenantMappingDto } from "src/userTenantMapping/dto/user-tenant-mapping.dto";
 export interface IServicelocatorAssignTenant {
   userTenantMapping(
     request: any,
-    assignTenantMappingDto: UserOrgTenantMappingDto,
+    assignTenantMappingDto: UserTenantMappingDto,
     response: Response
   );
 }

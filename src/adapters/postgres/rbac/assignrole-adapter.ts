@@ -72,7 +72,7 @@ export class PostgresAssignroleService {
         const roleExistforTenant = await this.roleRepository.findOne({
           where: {
             roleId: roleId,
-            orgId: tenantId,
+            tenantId: tenantId,
           },
         });
         if (!roleExistforTenant) {
