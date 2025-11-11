@@ -1,6 +1,7 @@
 import { HttpService } from "@nestjs/axios";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { LoggerUtil } from "src/common/logger/LoggerUtil";
 
 import axios, { AxiosRequestConfig } from "axios";
 import { API_RESPONSES } from "./response.messages";
@@ -91,7 +92,10 @@ export class NotificationRequest {
       data: data,
     };
     try {
-     console.log(`[DEBUG] WhatsApp payload being sent:`, JSON.stringify(body, null, 2));
+      LoggerUtil.log(
+        `[DEBUG] WhatsApp payload being sent:`,
+        JSON.stringify(body, null, 2)
+      );
       const response = await axios.request(config);
       return response.data;
     } catch (error) {
@@ -104,8 +108,7 @@ export class NotificationRequest {
       if (error.response) {
         const statusCode = error.response.status;
         const errorDetails = error.response.data || API_RESPONSES.ERROR;
- 
- 
+
         switch (statusCode) {
           case 400:
             throw new HttpException(
@@ -144,7 +147,7 @@ export class NotificationRequest {
       );
     }
   }
-  
+
   async sendEmail(to: string, subject: string, message: string): Promise<any> {
     const emailPayload = {
       email: {

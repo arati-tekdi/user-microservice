@@ -2865,7 +2865,6 @@ export class PostgresUserService implements IServicelocator {
           receipients: emailReceipt,
         },
       };
-      // console.log("notificationPayload",notificationPayload);
 
       const mailSend = await this.notificationRequest.sendNotification(
         notificationPayload
@@ -2902,7 +2901,6 @@ export class PostgresUserService implements IServicelocator {
         "{eventName}": "Shiksha Graha OTP",
         "{action}": "register"
       };
-      // console.log("hii",replacements,email)
 
       // Step 4: Send email notification
       const notificationPayload = await this.sendEmailNotification("OTP", "SendOtpOnMail", replacements, [email]);

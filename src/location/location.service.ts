@@ -3,7 +3,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Location } from "./entities/location.entity";
 import { CreateLocationDto } from "./dto/location-create.dto";
-import { error } from "console";
 import APIResponse from "src/common/responses/response";
 import { Response } from "express";
 

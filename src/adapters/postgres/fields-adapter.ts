@@ -1208,7 +1208,6 @@ export class PostgresFieldsService implements IServicelocatorfields {
       const fetchFieldParams = await this.fieldsRepository.findOne({
         where: condition,
       });
-      console.log("fetchFieldParams: ", fetchFieldParams);
       let order;
       if (sort?.length) {
         const orderKey = sort[1].toUpperCase();
@@ -1216,12 +1215,7 @@ export class PostgresFieldsService implements IServicelocatorfields {
       } else {
         order = `ORDER BY ${fieldName}_name ASC`;
       }
-      console.log(
-        "fetchFieldParams.sourceDetails.source: ",
-        fetchFieldParams.sourceDetails.source
-      );
       if (fetchFieldParams?.sourceDetails?.source === "table") {
-        console.log("1");
         let whereClause;
         if (controllingfieldfk) {
           if (!fetchFieldParams.dependsOn) {
@@ -1262,7 +1256,6 @@ export class PostgresFieldsService implements IServicelocatorfields {
           dynamicOptions = getFieldValuesFromJson;
         }
       } else {
-        console.log("2");
         if (fetchFieldParams?.fieldParams["options"] && controllingfieldfk) {
           dynamicOptions = fetchFieldParams?.fieldParams["options"].filter(
             (option: any) => option?.controllingfieldfk === controllingfieldfk

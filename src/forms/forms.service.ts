@@ -67,8 +67,6 @@ export class FormsService {
         );
       }
 
-      // console.log(formData);
-      
       const mappedResponse = await Promise.all(
         formData.fields.result.map(async (data) => {
           if (!data.coreField) {

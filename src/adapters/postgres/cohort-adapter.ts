@@ -379,7 +379,6 @@ export class PostgresCohortService {
           HttpStatus.CONFLICT
         );
       }
-      console.log("cohortCreateDto: ", cohortCreateDto);
       const response = await this.cohortRepository.save(cohortCreateDto);
 
       const createFailures = [];
