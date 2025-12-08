@@ -9,8 +9,8 @@ import {
 } from "typeorm";
 import { User } from "src/user/entities/user-entity";
 
-@Entity({ name: "UserOrgTenantMapping" })
-export class UserOrgTenantMapping {
+@Entity({ name: "UserTenantMapping" })
+export class UserTenantMapping {
   @PrimaryGeneratedColumn("uuid")
   Id: string;
 
@@ -19,9 +19,6 @@ export class UserOrgTenantMapping {
 
   @Column("uuid")
   tenantId: string;
-
-  @Column()
-  orgId: string;
 
   @CreateDateColumn({
     type: "timestamp with time zone",

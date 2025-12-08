@@ -50,13 +50,14 @@ async function getKeycloakAdminToken() {
     LoggerUtil.error(
       `${API_RESPONSES.SERVER_ERROR}`,
       `Error: ${error.message},`
-    );
+    )
   }
 
   return res;
 }
 
-async function createUserInKeyCloak(query, token, userDetails) {
+
+async function createUserInKeyCloak(query, token, role: string) {
   if (!query.password) {
     return "User cannot be created, Password missing";
   }
@@ -76,23 +77,8 @@ async function createUserInKeyCloak(query, token, userDetails) {
     ],
     attributes: {
       // Multi tenant for roles is not currently supported in keycloak
-      // user_roles: [
-      //   {
-      //     title: "Learner",
-      //     org_id: "",
-      //   },
-      //   {
-      //     title: "Learner",
-      //     org_id: "",
-      //   },
-      // ], // Added in attribute and mappers
-      // org_id: [tenantId],
-      // tenant_id: ["0d73bcf9-ab62-44ef-945e-88b1a77ab3c3"],
-
-      //added for org / tenant
-      tenant: [JSON.stringify(userDetails.tenant)],
-      organizations: JSON.stringify(userDetails.orgnizations),
-    },
+      user_roles: [role]  // Added in attribute and mappers
+    }
   });
 
   const config = {
@@ -104,7 +90,6 @@ async function createUserInKeyCloak(query, token, userDetails) {
     },
     data,
   };
-  console.log(config);
 
   try {
     // Make the request and wait for the response
@@ -112,34 +97,22 @@ async function createUserInKeyCloak(query, token, userDetails) {
 
     // Log and return the created user's ID
     const userId = response.headers.location.split("/").pop(); // Extract user ID from the location header
-    return {
-      statusCode: response.status,
-      message: "User created successfully",
-      userId: userId,
-    };
+    return { statusCode: response.status, message: "User created successfully", userId: userId };
   } catch (error) {
     // Handle errors and log relevant details
     if (error.response) {
-      console.error("Error Response Status:", error.response.status);
-      console.error("Error Response Data:", error.response.data);
-      console.error("Error Response Headers:", error.response.headers);
-
       return {
         statusCode: error.response.status,
-        message:
-          error.response.data.errorMessage ||
-          "Error occurred during user creation",
+        message: error.response.data.errorMessage || "Error occurred during user creation",
         email: query.email || "No email provided",
       };
     } else if (error.request) {
-      console.error("No response received:", error.request);
       return {
         statusCode: 500,
         message: "No response received from Keycloak",
         email: query.email || "No email provided",
       };
     } else {
-      console.error("Error setting up request:", error.message);
       return {
         statusCode: 500,
         message: `Error setting up request: ${error.message}`,
@@ -148,6 +121,7 @@ async function createUserInKeyCloak(query, token, userDetails) {
     }
   }
 }
+
 
 // Define the structure of the input query
 interface UpdateUserQuery {
@@ -220,8 +194,7 @@ async function updateUserInKeyCloak(
     // Extract error details
     const axiosError: AxiosError = error;
     const errorMessage =
-      axiosError.response?.data?.errorMessage ||
-      "Failed to update user in Keycloak";
+      axiosError.response?.data?.errorMessage || "Failed to update user in Keycloak";
 
     return {
       success: false,
@@ -230,6 +203,7 @@ async function updateUserInKeyCloak(
     };
   }
 }
+
 
 async function checkIfEmailExistsInKeycloak(email, token) {
   const axios = require("axios");
@@ -249,7 +223,7 @@ async function checkIfEmailExistsInKeycloak(email, token) {
     LoggerUtil.error(
       `${API_RESPONSES.SERVER_ERROR}`,
       `Error: "Keycloak error - email" ${e.message},`
-    );
+    )
     return e;
   }
 
@@ -277,12 +251,163 @@ async function checkIfUsernameExistsInKeycloak(username, token) {
     LoggerUtil.error(
       `${API_RESPONSES.SERVER_ERROR}`,
       `Error: "Keycloak error - username" ${e.message},`
-    );
+    )
     return e;
   }
 
   return userResponse;
 }
+
+// Exchange admin/service-account token for a specific user's tokens using Keycloak Token Exchange
+async function exchangeKeycloakTokenForUserId(keycloakUserId: string, subjectAccessToken: string) {
+  const qs = require("qs");
+  const baseURL = process.env.KEYCLOAK;
+  const realm = process.env.KEYCLOAK_REALM;
+  const clientId = process.env.KEYCLOAK_CLIENT_ID;
+  const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
+
+  const data = qs.stringify({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+    subject_token: subjectAccessToken,
+    subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+    requested_subject: keycloakUserId,
+    scope: "openid offline_access",
+  });
+
+  const axiosConfig = {
+    method: "post",
+    url: `${baseURL}realms/${realm}/protocol/openid-connect/token`,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    data,
+  };
+
+  try {
+    const res = await axios(axiosConfig);
+    return res.data;
+  } catch (e) {
+    const detail = e?.response?.data ? JSON.stringify(e.response.data) : e?.message;
+    LoggerUtil.warn(`Token exchange error: ${detail}`);
+    throw e;
+  }
+}
+
+// Obtains a service-account access token via client_credentials grant
+async function getServiceAccountAccessToken(): Promise<string | null> {
+  const qs = require("qs");
+  const baseURL = process.env.KEYCLOAK;
+  const realm = process.env.KEYCLOAK_REALM;
+  const clientId = process.env.KEYCLOAK_CLIENT_ID;
+  const clientSecret = process.env.KEYCLOAK_CLIENT_SECRET;
+
+  const data = qs.stringify({
+    grant_type: "client_credentials",
+    client_id: clientId,
+    client_secret: clientSecret,
+  });
+
+  const axiosConfig = {
+    method: "post",
+    url: `${baseURL}realms/${realm}/protocol/openid-connect/token`,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    data,
+  };
+
+  try {
+    const res = await axios(axiosConfig);
+    return res?.data?.access_token || null;
+  } catch (e) {
+    const detail = e?.response?.data ? JSON.stringify(e.response.data) : e?.message;
+    LoggerUtil.warn(`Service account token error: ${detail}`);
+    return null;
+  }
+}
+
+// Resolves a username to a Keycloak user and exchanges tokens to obtain access/refresh tokens
+async function getKeycloakTokensForUsername(username: string) {
+  const adminTokenRes = await getKeycloakAdminToken();
+  const adminAccessToken = adminTokenRes?.data?.access_token;
+  if (!adminAccessToken) return null;
+
+  const kcUserRes = await checkIfUsernameExistsInKeycloak(username, adminAccessToken);
+  const kcUser = Array.isArray(kcUserRes?.data) && kcUserRes.data.length > 0 ? kcUserRes.data[0] : null;
+  if (!kcUser?.id) return null;
+
+  // Use service account (client credentials) token for token-exchange subject
+  const serviceAccountToken = await getServiceAccountAccessToken();
+  if (!serviceAccountToken) return null;
+  return exchangeKeycloakTokenForUserId(kcUser.id, serviceAccountToken);
+}
+
+// Define the structure for user enable/disable operation
+interface UpdateUserEnabledQuery {
+  userId: string;
+  enabled: boolean;
+}
+
+// Define the structure of the function response
+interface UpdateUserEnabledResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+}
+
+async function updateUserEnabledStatusInKeycloak(
+  query: UpdateUserEnabledQuery,
+  token: string
+): Promise<UpdateUserEnabledResponse> {
+  // Validate required parameters
+  if (!query.userId) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "User status cannot be updated, userId missing",
+    };
+  }
+
+  // Prepare the payload for the update
+  const data = JSON.stringify({
+    enabled: query.enabled,
+  });
+
+  // Axios request configuration
+  const config: AxiosRequestConfig = {
+    method: "put",
+    url: `${process.env.KEYCLOAK}${process.env.KEYCLOAK_ADMIN}/${query.userId}`,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    data: data,
+  };
+
+  try {
+    // Perform the Axios request
+    const response: AxiosResponse = await axios(config);
+    return {
+      success: true,
+      statusCode: response.status,
+      message: `User ${query.enabled ? 'enabled' : 'disabled'} successfully in Keycloak`,
+    };
+  } catch (error: any) {
+    // Extract error details
+    const axiosError: AxiosError = error;
+    const errorMessage =
+      axiosError.response?.data?.errorMessage || `Failed to ${query.enabled ? 'enable' : 'disable'} user in Keycloak`;
+
+    return {
+      success: false,
+      statusCode: axiosError.response?.status || 500,
+      message: errorMessage,
+    };
+  }
+}
+
+
+
 
 export {
   getUserGroup,
@@ -290,6 +415,10 @@ export {
   getKeycloakAdminToken,
   createUserInKeyCloak,
   updateUserInKeyCloak,
+  updateUserEnabledStatusInKeycloak,
   checkIfEmailExistsInKeycloak,
   checkIfUsernameExistsInKeycloak,
+  exchangeKeycloakTokenForUserId,
+  getServiceAccountAccessToken,
+  getKeycloakTokensForUsername,
 };

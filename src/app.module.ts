@@ -29,6 +29,8 @@ import { RolePermissionModule } from "./permissionRbac/rolePermissionMapping/rol
 import { LocationModule } from "./location/location.module";
 import { KafkaModule } from "./kafka/kafka.module";
 import kafkaConfig from "./kafka/kafka.config";
+import { HealthController } from "./health.controller";
+import { CohortcontentModule } from "./cohortcontent/cohortcontent.module";
 @Module({
   imports: [
     RbacModule,
@@ -55,8 +57,9 @@ import kafkaConfig from "./kafka/kafka.config";
     RolePermissionModule,
     LocationModule,
     KafkaModule,
+    CohortcontentModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService, HttpService],
 })
 export class AppModule {

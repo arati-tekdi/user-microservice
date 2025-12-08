@@ -19,7 +19,7 @@ export class Role {
   code: string;
 
   @Column("uuid")
-  orgId: string;
+  tenantId: string;
 
   @CreateDateColumn({
     type: "timestamp with time zone",

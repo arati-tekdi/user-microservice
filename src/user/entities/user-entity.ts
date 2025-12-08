@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from "typeorm";
-import { UserOrgTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
+import { UserTenantMapping } from "src/userTenantMapping/entities/user-tenant-mapping.entity";
 
 export enum UserStatus {
   ACTIVE = "active",
@@ -31,8 +31,14 @@ export class User {
   @Column({ type: 'varchar', length: 50, nullable: false })
   lastName: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  name: string;
+
   @Column({ type: 'enum', enum: ['male', 'female', 'transgender'], nullable: false })
   gender: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: false })
+  enrollmentId: string;
 
   @Column({ type: "date", nullable: true })
   dob: Date;
@@ -95,8 +101,8 @@ export class User {
   // cohortMembers: CohortMembers[];
 
   @OneToMany(
-    () => UserOrgTenantMapping,
+    () => UserTenantMapping,
     (userTenantMapping) => userTenantMapping.user
   )
-  userTenantMapping: UserOrgTenantMapping[];
+  userTenantMapping: UserTenantMapping[];
 }

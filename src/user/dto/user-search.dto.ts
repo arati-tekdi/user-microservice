@@ -102,16 +102,9 @@ export class setFilters {
 
   @ApiPropertyOptional({
     type: String,
-    description: "Tenant Id",
+    description: "Role",
   })
   tenantId: string;
-
-  @ApiPropertyOptional({
-    type: String,
-    description: "Orgnization Id",
-  })
-  orgId: string;
-
 }
 export class excludeFields {
   @ApiProperty({

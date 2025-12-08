@@ -23,13 +23,17 @@ export class LoggerUtil {
                 format: winston.format.combine(winston.format.timestamp(), customFormat),
                 transports: [
                     new winston.transports.Console(),
-                    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-                    new winston.transports.File({ filename: 'combined.log' }),
                 ],
             });
         }
         return this.logger;
     }
+
+    // Method to reset logger (useful for testing or when files are deleted)
+    static resetLogger() {
+        this.logger = null;
+    }
+
     static log(
         message: string,
         context?: string,
