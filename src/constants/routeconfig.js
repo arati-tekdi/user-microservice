@@ -404,6 +404,19 @@
 		]
 	  },
 	  {
+		"sourceRoute": "/interface/v1/academicyears/create",
+		"type": "POST",
+		"priority": "MUST_HAVE",
+		"inSequence": false,
+		"orchestrated": false,
+		"targetPackages": [
+		  {
+			"basePackageName": "user",
+			"packageName": "shiksha-user"
+		  }
+		]
+	  },
+	  {
 		"sourceRoute": "/interface/v1/cohortmember/bulkCreate",
 		"type": "POST",
 		"priority": "MUST_HAVE",
@@ -670,6 +683,84 @@
 		"inSequence": false,
 		"orchestrated": false,
 		"targetPackages": [
+		  {
+			"basePackageName": "user",
+			"packageName": "shiksha-user"
+		  }
+		]
+	  },
+	  {
+		"sourceRoute": "/interface/v1/user/profile",
+		"type": "GET",
+		"priority": "MUST_HAVE",
+		"inSequence": false,
+		"orchestrated": false,
+		"targetPackages": [
+		  {
+			"basePackageName": "user",
+			"packageName": "shiksha-user"
+		  }
+		]
+	  },
+	  {
+		"sourceRoute": "/interface/v1/user/tenant/read/:id",
+		"type": "GET",
+		"priority": "MUST_HAVE",
+		"inSequence": false,
+		"orchestrated": false,
+		"targetPackages": [
+		  {
+			"basePackageName": "user",
+			"packageName": "shiksha-user"
+		  }
+		]
+	  },
+	{
+        "sourceRoute": "/interface/v1/user/sso/authenticate",
+        "type": "POST",
+        "priority": "MUST_HAVE",
+        "inSequence": false,
+        "orchestrated": false,
+        "targetPackages": [
+           {
+                "basePackageName": "user",
+                "packageName": "shiksha-user"
+            }
+        ]
+    },
+	{
+        "sourceRoute": "/interface/v1/user/cohortcontent",
+        "type": "POST",
+        "priority": "MUST_HAVE",
+        "inSequence": false,
+        "orchestrated": false,
+        "targetPackages": [
+           {
+                "basePackageName": "user",
+                "packageName": "shiksha-user"
+            }
+        ]
+    },
+	{
+		"sourceRoute": "/interface/v1/user/cohortcontent",
+		"type": "PUT",
+		"priority": "MUST_HAVE",
+		"inSequence": false,
+		"orchestrated": false,
+		"targetPackages": [
+		   {
+				"basePackageName": "user",
+				"packageName": "shiksha-user"
+			}
+		]
+	},	
+	{
+		"sourceRoute": "/interface/v1/user/cohortcontent/search",
+		"type": "POST",
+		"priority": "MUST_HAVE",
+		"inSequence": false,
+		"orchestrated": false,
+		"targetPackages": [
 		   {
 				"basePackageName": "user",
 				"packageName": "shiksha-user"
@@ -748,11 +839,11 @@
 		"inSequence": false,
 		"orchestrated": false,
 		"targetPackages": [
-		  {
-			"basePackageName": "user",
-			"packageName": "shiksha-user"
-		  }
+		   {
+				"basePackageName": "user",
+				"packageName": "shiksha-user"
+			}
 		]
-	  }
+	}
 	]
   }

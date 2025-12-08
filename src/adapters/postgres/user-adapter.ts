@@ -2551,9 +2551,13 @@ export class PostgresUserService implements IServicelocator {
       throw new Error(`${API_RESPONSES.WHATSAPP_NOTIFICATION_ERROR}:  ${error.message}`);
     }
   }
+<<<<<<< HEAD
   // verify OTP based on reason [signup , forgot , login]
   // On successful 'login': attempts Keycloak token exchange and returns access_token/refresh_token
   // On successful 'forgot': returns a short-lived reset token for password reset
+=======
+  //verify OTP based on reason [signup , forgot]
+>>>>>>> 37f51cd000a8ecdce23a7fdd31a5f27b81f96067
   async verifyOtp(body: OtpVerifyDTO, response: Response) {
     const apiId = APIID.VERIFY_OTP;
     try {
@@ -2655,7 +2659,11 @@ export class PostgresUserService implements IServicelocator {
         );
       }
 
+<<<<<<< HEAD
       // Verify OTP hash against the provided inputs
+=======
+      // Verify OTP hash
+>>>>>>> 37f51cd000a8ecdce23a7fdd31a5f27b81f96067
       const data = `${identifier}.${otp}.${reason}.${expires}`;
       const calculatedHash = this.authUtils.calculateHash(data, this.smsKey);
       if (calculatedHash === hashValue) {

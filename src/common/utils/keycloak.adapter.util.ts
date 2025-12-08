@@ -258,6 +258,7 @@ async function checkIfUsernameExistsInKeycloak(username, token) {
   return userResponse;
 }
 
+<<<<<<< HEAD
 // Exchange admin/service-account token for a specific user's tokens using Keycloak Token Exchange
 async function exchangeKeycloakTokenForUserId(keycloakUserId: string, subjectAccessToken: string) {
   const qs = require("qs");
@@ -342,6 +343,8 @@ async function getKeycloakTokensForUsername(username: string) {
   return exchangeKeycloakTokenForUserId(kcUser.id, serviceAccountToken);
 }
 
+=======
+>>>>>>> 37f51cd000a8ecdce23a7fdd31a5f27b81f96067
 // Define the structure for user enable/disable operation
 interface UpdateUserEnabledQuery {
   userId: string;
@@ -406,9 +409,12 @@ async function updateUserEnabledStatusInKeycloak(
   }
 }
 
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> 37f51cd000a8ecdce23a7fdd31a5f27b81f96067
 export {
   getUserGroup,
   getUserRole,
